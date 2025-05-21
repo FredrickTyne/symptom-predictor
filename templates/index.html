@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Health Prediction</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+
+    .container {
+      display: flex;
+      gap: 20px;
+    }
+
+    .left-panel {
+      flex: 0 0 25%;
+      background-color: #f9f9f9;
+      padding: 20px;
+      border-radius: 8px;
+    }
+
+    .right-panel {
+      flex: 1;
+      background-color: #e6f2ff;
+      padding: 20px;
+      border-radius: 8px;
+    }
+
+    .input-group {
+      margin-bottom: 15px;
+    }
+
+    .symptoms-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      gap: 10px;
+    }
+
+    .symptom-btn {
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      background-color: #ccc;
+      font-size: 12px;
+    }
+
+    .symptom-btn.active {
+      background-color: #66bb6a;
+      color: white;
+    }
+
+    #predict-btn {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-weight: bold;
+    }
+
+    /* Modal 样式 */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0; top: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+    }
+
+    .modal-content {
+      background-color: #fff;
+      margin: 15% auto;
+      padding: 20px;
+      border-radius: 8px;
+      width: 300px;
+      text-align: center;
+    }
+
+    .close-btn {
+      float: right;
+      font-size: 20px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Health Prediction</h2>
+  <form id="prediction-form">
+    <div class="container">
+      <!-- 左侧 -->
+      <div class="left-panel">
+        <div class="input-group">
+          <label for="Age">Age:</label><br>
+          <input type="number" name="Age" required>
+        </div>
+
+        <div class="input-group">
+          <label for="Gender">Gender:</label><br>
+          <select name="Gender" required>
+            <option value="0">Male</option>
+            <option value="1">Female</option>
+          </select>
+        </div>
+
+        <div class="input-group">
+          <label for="Temperature (C)">Temperature (C):</label><br>
+          <input type="number" name="Temperature (C)" step="0.1" required>
+        </div>
+
+        <div class="input-group">
+          <label for="Humidity">Humidity:</label><br>
+          <input type="number" name="Humidity" step="0.1" required>
+        </div>
+
+        <div class="input-group">
+          <label for="Wind Speed (km/h)">Wind Speed (km/h):</label><br>
+          <input type="number" name="Wind Speed (km/h)" step="0.1" required>
+        </div>
+      </div>
+
+      <!-- 右侧 -->
+      <div class="right-panel">
+        <label><strong>Symptoms:</strong></label>
+        <div class="symptoms-grid" id="symptom-grid">
+          <!-- 自动生成症状按钮 -->
+        </div>
+      </div>
+    </div>
+
+    <input type="hidden" name="symptom_data" id="symptom_data">
+    <button type="submit" id="predict-btn">Predict</button>
+  </form>
+
+  <!-- Modal -->
+  <div id="result-modal" class="modal">
+    <div class="modal-content">
+      <span class="close-btn" onclick="document.getElementById('result-modal').style.display='none'">&times;</span>
+      <p id="result-text">Prediction result here...</p>
+    </div>
+  </div>
+
+  <script>
+    // 50 个症状
+    const symptomList = [
+      'nausea', 'joint_pain', 'abdominal_pain', 'high_fever', 'chills', 'fatigue',
+      'runny_nose', 'pain_behind_the_eyes', 'dizziness', 'headache', 'chest_pain',
+      'vomiting', 'cough', 'shivering', 'asthma_history', 'high_cholesterol', 'diabetes',
+      'obesity', 'hiv_aids', 'nasal_polyps', 'asthma', 'high_blood_pressure',
+      'severe_headache', 'weakness', 'trouble_seeing', 'fever', 'body_aches',
+      'sore_throat', 'sneezing', 'diarrhea', 'rapid_breathing', 'rapid_heart_rate',
+      'pain_behind_eyes', 'swollen_glands', 'rashes', 'sinus_headache', 'facial_pain',
+      'shortness_of_breath', 'reduced_smell_and_taste', 'skin_irritation',
+      'itchiness', 'throbbing_headache', 'confusion', 'back_pain', 'knee_ache'
+    ];
+
+    const symptomState = {};
+    const grid = document.getElementById("symptom-grid");
+
+    // 动态生成按钮
+    symptomList.forEach(symptom => {
+      symptomState[symptom] = 0;
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "symptom-btn";
+      btn.textContent = symptom;
+      btn.dataset.name = symptom;
+
+      btn.addEventListener("click", () => {
+        symptomState[symptom] = 1 - symptomState[symptom];
+        btn.classList.toggle("active");
+      });
+
+      grid.appendChild(btn);
+    });
+
+    // 提交预测
+    document.getElementById("prediction-form").addEventListener("submit", function(e) {
+      e.preventDefault();
+      const formData = new FormData(this);
+      for (let key in symptomState) {
+        formData.append(key, symptomState[key]);
+      }
+
+      fetch("/predict", {
+        method: "POST",
+        body: formData,
+      })
+      .then(response => response.json())
+      .then(data => {
+        document.getElementById("result-text").innerText = "Predicted Prognosis: " + data.prediction;
+        document.getElementById("result-modal").style.display = "block";
+      })
+      .catch(error => {
+        console.error("Error:", error);
+        document.getElementById("result-text").innerText = "Prediction failed.";
+        document.getElementById("result-modal").style.display = "block";
+      });
+    });
+
+    // 关闭 modal（点击外部区域）
+    window.onclick = function(event) {
+      const modal = document.getElementById("result-modal");
+      if (event.target == modal) {
+        modal.style.display = "none";
+      }
+    }
+  </script>
+
+</body>
+</html>
